@@ -1,12 +1,14 @@
 #include <ESP8266WiFi.h>  //https://github.com/esp8266/Arduino
-
+#include <ESP8266mDNS.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include "WiFiManager.h"  //https://github.com/tzapu/WiFiManager
 #include <ArduinoOTA.h>
 
 
-const char* board_name = "test_board";
+char hostString[20] = {0};
+
+MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
 
 void configModeCallback (WiFiManager *myWiFiManager) {
   Serial.print("Entered config mode IP: ");
@@ -21,7 +23,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(0, INPUT_PULLUP);
   pinMode(BUILTIN_LED, OUTPUT);
-
+  
   WiFiManager wifiManager;
   
   // Blink a few times to indicate reboot. 
@@ -36,9 +38,13 @@ void setup() {
   //Set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   wifiManager.setAPCallback(configModeCallback);
 
-
+  // Create the name of this board by using the chip ID. 
+  sprintf(hostString, "Base-Control-%06X", ESP.getChipId());
+  Serial.print("Hostname: ");
+  Serial.println(hostString);
+  
   // Try to connect with stored settings. If that fails, start access point.
-  if(!wifiManager.autoConnect(board_name)) {
+  if(!wifiManager.autoConnect(hostString)) {
     Serial.println("failed to connect and hit timeout");
     // Sooo even the autoconnect failed...
     // Do a long blink to notify!
@@ -53,8 +59,8 @@ void setup() {
   Serial.println("Connection scuceeded!");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-  
-  ArduinoOTA.setHostname(board_name);
+
+  ArduinoOTA.setHostname(hostString);
   
   ArduinoOTA.onStart([]() {
     String type;
@@ -86,6 +92,8 @@ void setup() {
 
   ArduinoOTA.begin();
   Serial.println("Arduino OTA has booted.");
+
+  MDNS.setHostProbeResultCallback(hostProbeResult);
 }
 
 void loop() {
@@ -103,5 +111,27 @@ void loop() {
     WiFiManager wifiManager;
     wifiManager.resetSettings();
     ESP.restart();
+  }
+}
+
+void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) {
+  Serial.println("MDNSProbeResultCallback");
+  //Serial.printf("MDNSProbeResultCallback: Host domain '%s.local' is %s\n", p_pcDomainName.c_str(), (p_bProbeResult ? "free" : "already USED!"));
+  if (!hMDNSService) {
+    // Add a 'clock.tcp' service to port 'SERVICE_PORT', using the host domain as instance domain
+    hMDNSService = MDNS.addService(0, "ScifiBase", "tcp", 80);
+    if (hMDNSService) {
+      // Add a simple static MDNS service TXT item
+      // MDNS.addServiceTxt(hMDNSService, "port#", 80);
+      
+      // Set the callback function for dynamic service TXTs
+      //MDNS.setDynamicServiceTxtCallback(MDNSDynamicServiceTxtCallback);
+    }
+  }
+}
+
+void MDNSDynamicServiceTxtCallback(const MDNSResponder::hMDNSService p_hService) {
+  if (hMDNSService == p_hService) {
+    MDNS.addDynamicServiceTxt(p_hService, "some_extra_data", "test test test");
   }
 }
