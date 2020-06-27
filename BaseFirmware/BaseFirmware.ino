@@ -96,23 +96,24 @@ void setup() {
   ArduinoOTA.begin();
   Serial.println("Arduino OTA has booted.");
 
-
-  while(true)
-  {
-    serverIP = getServerIP();
-    if(serverIP != IPAddress(0))
-    {
-      break;
-    }
-    digitalWrite(2, LOW);
-    delay(1000);
-    digitalWrite(2, HIGH);
-    delay(1000);
-    
-  }
-  Serial.println(getServerIP());
+  resolveServerIPWithWait();
+ 
 }
 
+
+void resolveServerIPWithWait()
+{
+  serverIP = getServerIP();
+  if(serverIP != IPAddress(0))
+  {
+    return;
+  }
+
+  digitalWrite(2, LOW);
+  delay(500);
+  digitalWrite(2, HIGH);
+  delay(500);
+}
 
 IPAddress getServerIP()
 {
@@ -128,6 +129,7 @@ IPAddress getServerIP()
 }
 
 void loop() {
+  Serial.println("LOOP");
   // Do the over the air Maaaagic.
   ArduinoOTA.handle(); 
 
@@ -148,10 +150,19 @@ void loop() {
   // Connect with the control server at port 5000
   http.begin(serverIP.toString(), 5000);
   int httpCode = http.GET();
-  String payload = http.getString(); 
-  // TODO: Actually do something with the response
-  Serial.print("RESPONSE:");
-  Serial.println(payload);  
+  if(httpCode > 0)
+  {
+    Serial.print("HTTP CODE RETURNED: ");
+    Serial.println(httpCode);
+    String payload = http.getString(); 
+    // TODO: Actually do something with the response
+    Serial.print("RESPONSE:");
+    Serial.println(payload);
+  } else 
+  {
+    // Couldn't find the server. Oh noes!
+    resolveServerIPWithWait();
+  }
   delay(5000);
 }
 
