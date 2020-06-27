@@ -129,7 +129,6 @@ IPAddress getServerIP()
 }
 
 void loop() {
-  Serial.println("LOOP");
   // Do the over the air Maaaagic.
   ArduinoOTA.handle(); 
 
@@ -177,13 +176,13 @@ void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) {
       // MDNS.addServiceTxt(hMDNSService, "port#", 80);
       
       // Set the callback function for dynamic service TXTs
-      //MDNS.setDynamicServiceTxtCallback(MDNSDynamicServiceTxtCallback);
+      MDNS.setDynamicServiceTxtCallback(MDNSDynamicServiceTxtCallback);
     }
   }
 }
 
 void MDNSDynamicServiceTxtCallback(const MDNSResponder::hMDNSService p_hService) {
   if (hMDNSService == p_hService) {
-    MDNS.addDynamicServiceTxt(p_hService, "some_extra_data", "test test test");
+    MDNS.addDynamicServiceTxt(p_hService, "Server", serverIP.toString().c_str());
   }
 }
