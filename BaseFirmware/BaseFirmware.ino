@@ -2,11 +2,13 @@
 #include <ESP8266mDNS.h>
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
 #include "WiFiManager.h"  //https://github.com/tzapu/WiFiManager
 #include <ArduinoOTA.h>
 
 
 char hostString[20] = {0};
+IPAddress serverIP = IPAddress(0);
 
 MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
 
@@ -22,7 +24,8 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   pinMode(0, INPUT_PULLUP);
-  pinMode(BUILTIN_LED, OUTPUT);
+  pinMode(BUILTIN_LED, OUTPUT); // Primary led
+  pinMode(2, OUTPUT); // Secondary led
   
   WiFiManager wifiManager;
   
@@ -93,7 +96,35 @@ void setup() {
   ArduinoOTA.begin();
   Serial.println("Arduino OTA has booted.");
 
+
+  while(true)
+  {
+    serverIP = getServerIP();
+    if(serverIP != IPAddress(0))
+    {
+      break;
+    }
+    digitalWrite(2, LOW);
+    delay(1000);
+    digitalWrite(2, HIGH);
+    delay(1000);
+    
+  }
+  Serial.println(getServerIP());
+}
+
+
+IPAddress getServerIP()
+{
   MDNS.setHostProbeResultCallback(hostProbeResult);
+  int n = MDNS.queryService("ScifiBase", "tcp");
+  for (int i = 0; i < n; ++i) {
+    if(MDNS.hostname(i) == "Base-Control-Server._ScifiBase._tcp.local")
+    {
+      return MDNS.IP(i);
+    }
+  }
+  return IPAddress(0);
 }
 
 void loop() {
@@ -112,6 +143,16 @@ void loop() {
     wifiManager.resetSettings();
     ESP.restart();
   }
+
+  HTTPClient http;
+  // Connect with the control server at port 5000
+  http.begin(serverIP.toString(), 5000);
+  int httpCode = http.GET();
+  String payload = http.getString(); 
+  // TODO: Actually do something with the response
+  Serial.print("RESPONSE:");
+  Serial.println(payload);  
+  delay(5000);
 }
 
 void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) {
