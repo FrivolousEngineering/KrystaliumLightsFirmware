@@ -5,9 +5,14 @@
 #include <ESP8266HTTPClient.h>
 #include "WiFiManager.h"  //https://github.com/tzapu/WiFiManager
 #include <ArduinoOTA.h>
+#include <ArduinoJson.h> 
 
 
 char hostString[20] = {0};
+char endpoint[40];
+
+bool shouldSaveConfig = false;
+
 IPAddress serverIP = IPAddress(0);
 
 MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
@@ -20,14 +25,18 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   Serial.println(myWiFiManager->getConfigPortalSSID());
 }
 
+void saveConfigCallback () 
+{
+  Serial.println("Should save config");
+  shouldSaveConfig = true;
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   pinMode(0, INPUT_PULLUP);
   pinMode(BUILTIN_LED, OUTPUT); // Primary led
   pinMode(2, OUTPUT); // Secondary led
-  
-  WiFiManager wifiManager;
   
   // Blink a few times to indicate reboot. 
   digitalWrite(LED_BUILTIN, LOW); // Turn the led on
@@ -37,9 +46,56 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW); // Turn the led on
   delay(250);
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
+  Serial.println("Starting setup");
+  // Clear the data (used for debugging)
+  SPIFFS.format();
+  if (SPIFFS.begin()) {
+    Serial.println("Mounted file system");
+    if (SPIFFS.exists("/config.json")) {
+      //file exists, reading and loading
+      Serial.println("Reading config file");
+      File configFile = SPIFFS.open("/config.json", "r");
+      if (configFile) 
+      {
+        Serial.println("Opened config file");
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        configFile.readBytes(buf.get(), size);
+        DynamicJsonDocument doc(1024);
+        DeserializationError error = deserializeJson(doc, buf.get());
+        // Print it on the serial
+        serializeJson(doc, Serial);
+        
+        if (!error) 
+        {
+          Serial.println("\nparsed json");
+          strcpy(endpoint, doc["endpoint"]);
+        } else 
+        {
+          Serial.println("failed to load json config");
+        }
+        configFile.close();
+      }
+    }
+  } else 
+  {
+    Serial.println("Failed to mount FS");
+  }
+
+  WiFiManagerParameter custom_endpoint("endpoint", "custom endpoint", endpoint, 40);
+
+  WiFiManager wifiManager;
+
+  // Set the callback for the custom extra fields
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+  
+  wifiManager.addParameter(&custom_endpoint);
   
   //Set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   wifiManager.setAPCallback(configModeCallback);
+  
 
   // Create the name of this board by using the chip ID. 
   sprintf(hostString, "Base-Control-%06X", ESP.getChipId());
@@ -58,7 +114,28 @@ void setup() {
     delay(1000);
   } 
 
-  //if you get here you have connected to the WiFi
+
+  strcpy(endpoint, custom_endpoint.getValue());
+
+  if(shouldSaveConfig)
+  {
+    // The custom config has been changed, so we have to store something.
+    Serial.println("Saving the updated config");
+    DynamicJsonDocument doc(1024);
+    doc["endpoint"] = endpoint;
+
+    File configFile = SPIFFS.open("/config.json", "w");
+    if (!configFile) {
+      Serial.println("failed to open config file for writing");
+    }
+
+    serializeJson(doc, Serial);
+    serializeJson(doc, configFile);
+    configFile.close();
+    Serial.println("");
+  }
+
+  // If you get here you have connected to the WiFi
   Serial.println("Connection scuceeded!");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
