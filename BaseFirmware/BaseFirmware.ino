@@ -84,7 +84,7 @@ void setup() {
     Serial.println("Failed to mount FS");
   }
 
-  WiFiManagerParameter custom_endpoint("endpoint", "custom endpoint", endpoint, 40);
+  WiFiManagerParameter custom_endpoint("endpoint", "Custom endpoint", endpoint, 40);
 
   WiFiManager wifiManager;
 
