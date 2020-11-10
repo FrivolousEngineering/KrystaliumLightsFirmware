@@ -229,7 +229,7 @@ void loop() {
   
   // Connect with the control server at port 5000
   String server_address = serverIP.toString();
-  server_address = "http://" + server_address + ":5000/valve/" + String(hostString) + "/";
+  server_address = "http://" + server_address + ":5000/controller/" + String(hostString) + "/";
   http.begin(server_address);  // Maybe we shouldn't start a server every update loop, but eh...
 
   DynamicJsonDocument doc(1024);
