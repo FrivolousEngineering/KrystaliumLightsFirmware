@@ -46,7 +46,7 @@ void setup()
   Serial.println("Starting setup");
   
   // Clear the data (used for debugging)
-  SPIFFS.format();
+  // SPIFFS.format(); // This shouldn't be done in live production code since it will reset all data that it has. 
   if (SPIFFS.begin()) 
   {
     Serial.println("Mounted file system");
