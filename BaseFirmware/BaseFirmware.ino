@@ -17,11 +17,12 @@ IPAddress serverIP = IPAddress(0);
 
 MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
 
-void configModeCallback (WiFiManager *myWiFiManager) {
+void configModeCallback (WiFiManager *myWiFiManager) 
+{
   Serial.print("Entered config mode IP: ");
   Serial.print(WiFi.softAPIP());
   Serial.print(" accespoint name: ");
-  //if you used auto generated SSID, print it
+  // If you used auto generated SSID, print it
   Serial.println(myWiFiManager->getConfigPortalSSID());
 }
 
@@ -31,7 +32,8 @@ void saveConfigCallback ()
   shouldSaveConfig = true;
 }
 
-void setup() {
+void setup() 
+{
   // put your setup code here, to run once:
   Serial.begin(115200);
   pinMode(0, INPUT_PULLUP);
@@ -45,9 +47,11 @@ void setup() {
   
   // Clear the data (used for debugging)
   SPIFFS.format();
-  if (SPIFFS.begin()) {
+  if (SPIFFS.begin()) 
+  {
     Serial.println("Mounted file system");
-    if (SPIFFS.exists("/config.json")) {
+    if (SPIFFS.exists("/config.json")) 
+    {
       //file exists, reading and loading
       Serial.println("Reading config file");
       File configFile = SPIFFS.open("/config.json", "r");
@@ -100,7 +104,8 @@ void setup() {
   Serial.println(hostString);
   
   // Try to connect with stored settings. If that fails, start access point.
-  if(!wifiManager.autoConnect(hostString)) {
+  if(!wifiManager.autoConnect(hostString)) 
+  {
     Serial.println("failed to connect and hit timeout");
     // Sooo even the autoconnect failed...
     // Do a long blink to notify!
@@ -122,7 +127,8 @@ void setup() {
     doc["endpoint"] = endpoint;
 
     File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile) {
+    if (!configFile) 
+    {
       Serial.println("failed to open config file for writing");
     }
 
@@ -139,9 +145,11 @@ void setup() {
 
   ArduinoOTA.setHostname(hostString);
   
-  ArduinoOTA.onStart([]() {
+  ArduinoOTA.onStart([]() 
+  {
     String type;
-    if (ArduinoOTA.getCommand() == U_FLASH){
+    if (ArduinoOTA.getCommand() == U_FLASH)
+    {
       type = "sketch";
     }
     else { // U_SPIFFS
@@ -150,15 +158,18 @@ void setup() {
     Serial.println("Start updating " + type);
   });
   
-  ArduinoOTA.onEnd([]() {
+  ArduinoOTA.onEnd([]() 
+  {
     Serial.println("\nEnd");
   });
   
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) 
+  {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
   });
   
-  ArduinoOTA.onError([](ota_error_t error) {
+  ArduinoOTA.onError([](ota_error_t error) 
+  {
     Serial.printf("Error[%u]: ", error);
     if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
     else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
@@ -250,8 +261,7 @@ void notifyServer()
   // Do the actual request.
   int httpCode = http.PUT(output);
   if(httpCode > 0)
-  {
-    
+  { 
     Serial.print("HTTP CODE RETURNED: ");
     Serial.println(httpCode);
     String payload = http.getString(); 
@@ -267,13 +277,15 @@ void notifyServer()
   }
 }
 
-void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) {
+void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) 
+{
   Serial.println("MDNSProbeResultCallback");
   //Serial.printf("MDNSProbeResultCallback: Host domain '%s.local' is %s\n", p_pcDomainName.c_str(), (p_bProbeResult ? "free" : "already USED!"));
-  if (!hMDNSService) {
-    // Add a 'clock.tcp' service to port 'SERVICE_PORT', using the host domain as instance domain
+  if (!hMDNSService) 
+  {
     hMDNSService = MDNS.addService(0, "ScifiBase", "tcp", 80);
-    if (hMDNSService) {
+    if (hMDNSService) 
+    {
       // Add a simple static MDNS service TXT item
       // MDNS.addServiceTxt(hMDNSService, "port#", 80);
       
@@ -283,8 +295,10 @@ void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) {
   }
 }
 
-void MDNSDynamicServiceTxtCallback(const MDNSResponder::hMDNSService p_hService) {
-  if (hMDNSService == p_hService) {
+void MDNSDynamicServiceTxtCallback(const MDNSResponder::hMDNSService p_hService) 
+{
+  if (hMDNSService == p_hService) 
+  {
     MDNS.addDynamicServiceTxt(p_hService, "Server", serverIP.toString().c_str());
   }
 }
