@@ -38,14 +38,8 @@ void setup() {
   pinMode(BUILTIN_LED, OUTPUT); // Primary led
   pinMode(2, OUTPUT); // Secondary led
   
-  // Blink a few times to indicate reboot. 
+  // BTurn led on so we see something is going on. 
   digitalWrite(LED_BUILTIN, LOW); // Turn the led on
-  delay(250);
-  digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
-  delay(250);
-  digitalWrite(LED_BUILTIN, LOW); // Turn the led on
-  delay(250);
-  digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
   Serial.println(""); // Ensure a newline
   Serial.println("Starting setup");
   
@@ -86,6 +80,8 @@ void setup() {
     Serial.println("Failed to mount FS");
   }
 
+  digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
+  Serial.println("Data loaded, starting wifi manager");
   WiFiManagerParameter custom_endpoint("endpoint", "Custom endpoint", endpoint, 40);
 
   WiFiManager wifiManager;
@@ -97,7 +93,6 @@ void setup() {
   
   //Set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   wifiManager.setAPCallback(configModeCallback);
-  
 
   // Create the name of this board by using the chip ID. 
   sprintf(hostString, "Base-Control-%06X", ESP.getChipId());
@@ -116,7 +111,7 @@ void setup() {
     delay(1000);
   } 
 
-
+  digitalWrite(LED_BUILTIN, LOW); // Turn the led on
   strcpy(endpoint, custom_endpoint.getValue());
 
   if(shouldSaveConfig)
@@ -174,11 +169,8 @@ void setup() {
 
   ArduinoOTA.begin();
   Serial.println("Arduino OTA has booted.");
-
-  resolveServerIPWithWait();
- 
+  digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
 }
-
 
 void resolveServerIPWithWait()
 {
@@ -224,6 +216,23 @@ void loop() {
     ESP.restart();
   }
 
+  notifyServer();
+  delay(2000);
+}
+
+
+void notifyServer()
+{
+  if(serverIP == IPAddress(0))
+  {
+    resolveServerIPWithWait();
+    if(serverIP == IPAddress(0))
+    {
+      Serial.println("Unable to find the Server");
+      return; // Still nothing.
+    }
+  }
+  
   HTTPClient http;
   http.addHeader("Content-Type", "application/json");
   
@@ -256,7 +265,6 @@ void loop() {
     // Couldn't find the server. Oh noes!
     resolveServerIPWithWait();
   }
-  delay(5000);
 }
 
 void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) {
