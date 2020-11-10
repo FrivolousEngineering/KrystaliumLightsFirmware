@@ -46,7 +46,9 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW); // Turn the led on
   delay(250);
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
+  Serial.println(""); // Ensure a newline
   Serial.println("Starting setup");
+  
   // Clear the data (used for debugging)
   SPIFFS.format();
   if (SPIFFS.begin()) {
@@ -223,11 +225,24 @@ void loop() {
   }
 
   HTTPClient http;
+  http.addHeader("Content-Type", "application/json");
+  
   // Connect with the control server at port 5000
-  http.begin(serverIP.toString(), 5000);
-  int httpCode = http.GET();
+  String server_address = serverIP.toString();
+  server_address = "http://" + server_address + ":5000/valve/" + String(hostString) + "/";
+  http.begin(server_address);  // Maybe we shouldn't start a server every update loop, but eh...
+
+  DynamicJsonDocument doc(1024);
+  doc["sensor_value"] = analogRead(A0);  // Use .set(value) to know if it succeedded (returns true if it worked)
+
+  char output[128];
+  serializeJson(doc, output);
+  
+  // Do the actual request.
+  int httpCode = http.PUT(output);
   if(httpCode > 0)
   {
+    
     Serial.print("HTTP CODE RETURNED: ");
     Serial.println(httpCode);
     String payload = http.getString(); 
@@ -236,6 +251,8 @@ void loop() {
     Serial.println(payload);
   } else 
   {
+    Serial.print("Failed to find the server! Got status code");
+    Serial.println(httpCode);
     // Couldn't find the server. Oh noes!
     resolveServerIPWithWait();
   }
