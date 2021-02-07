@@ -1,2 +1,2 @@
 # ScifiBaseControlFirmware
-Control firmware for nodeMCU boards for the SciFi base project
+Control firmware for nodeMCU / arduino boards for the SciFi base project
