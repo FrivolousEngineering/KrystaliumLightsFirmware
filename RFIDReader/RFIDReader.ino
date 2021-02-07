@@ -22,7 +22,7 @@ RFID rfid(RFID_PIN_SDA,RFID_PIN_RST);
 
 String detected_tag = "None";
 bool waiting_for_confirmation = false;
-
+int waiting_for_confirmation_counter = 0;
 
 #define MAX_BUFFER_SIZE 64
 uint8_t command_buffer_pos = 0;
@@ -63,9 +63,18 @@ void loop()
     analogWrite(GREEN_LED_PIN, led_brightness);
     analogWrite(RED_LED_PIN, 0);
     delay(200);
+    waiting_for_confirmation_counter++;
+    if(waiting_for_confirmation_counter > 25)
+    {
+        // Timeout
+        waiting_for_confirmation = false;
+        waiting_for_confirmation_counter = 0;
+        analogWrite(RED_LED_PIN, 0);
+        analogWrite(GREEN_LED_PIN, 0);
+        beep(50, 500);
+    }
     if(readFromSerial())
     {
-      
       String result(command_buffer); 
       if(result == "ok")
       {
