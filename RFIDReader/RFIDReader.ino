@@ -127,7 +127,7 @@ String toHexString(byte *buffer, byte bufferSize)
 {
   String result = "";
   for (byte i = 0; i < bufferSize; i++) {
-    result += buffer[i] < 0x10 ? "0" : ":";
+    result += buffer[i] < 0x10 ? "0" : "";
     result += String(buffer[i], HEX);
   }
   return result;
