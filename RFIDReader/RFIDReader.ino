@@ -1,13 +1,3 @@
-
-// Include Libraries
-#include "Arduino.h"
-#include "RFID.h"
-
-
-// Pin Definitions
-#define RFID_PIN_RST	2
-#define RFID_PIN_SDA	10
-
 #define buzzerPin 3
 #define GREEN_LED_PIN 5 
 
@@ -17,8 +7,13 @@
 
 bool card_was_present_last_check = false;
 
-// object initialization
-RFID rfid(RFID_PIN_SDA,RFID_PIN_RST);
+#include <MFRC522.h>
+#include <SPI.h>
+
+#define SS_PIN 10
+#define RST_PIN 9
+ 
+MFRC522 rfid(SS_PIN, RST_PIN); // Instance of the class
 
 String detected_tag = "None";
 bool waiting_for_confirmation = false;
@@ -37,8 +32,9 @@ void setup()
   while (!Serial) ; // wait for serial port to connect. Needed for native USB
   Serial.println("start");
   
-  // Initialize RFID module
-  rfid.init();
+  SPI.begin(); // Init SPI bus
+  rfid.PCD_Init(); // Init MFRC522 
+  
   pinMode(RED_LED_PIN, OUTPUT);  
   pinMode(GREEN_LED_PIN, OUTPUT); 
   pinMode(buzzerPin, OUTPUT); //Set buzzerPin as output
@@ -102,31 +98,40 @@ void loop()
     }
   } else
   {
-    // Normal read mode
-    detected_tag = rfid.readTag();
-    if(detected_tag == "None")
+    if ( ! rfid.PICC_IsNewCardPresent() || ! rfid.PICC_ReadCardSerial())
     {
       card_was_present_last_check = false; // Card has been removed
       waiting_for_confirmation = false;
-    } else
+      return;
+    }
+     
+    detected_tag = toHexString(rfid.uid.uidByte, rfid.uid.size);
+
+    // Stop the RFID
+    rfid.PICC_HaltA();
+    rfid.PCD_StopCrypto1();
+    
+    if(!card_was_present_last_check)
     {
-      //analogWrite(GREEN_LED_PIN, led_brightness);
-      //analogWrite(RED_LED_PIN, 0);
-      if(!card_was_present_last_check)
-      {
-        // Ask the other side if the card is okay!
-        waiting_for_confirmation = true;
-        Serial.println(detected_tag);
-        beep(50);
-        delay(50);
-        card_was_present_last_check = true;
-      }
+      // Ask the other side if the card is okay!
+      waiting_for_confirmation = true;
+      Serial.println(detected_tag);
+      beep(50);
+      delay(50);
+      card_was_present_last_check = true; 
     }
   }
 }
 
-
-
+String toHexString(byte *buffer, byte bufferSize)
+{
+  String result = "";
+  for (byte i = 0; i < bufferSize; i++) {
+    result += buffer[i] < 0x10 ? "0" : ":";
+    result += String(buffer[i], HEX);
+  }
+  return result;
+}
 
 
 bool readFromSerial()
