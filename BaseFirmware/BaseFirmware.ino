@@ -255,14 +255,13 @@ void notifyServer()
   
   HTTPClient http;
   http.addHeader("Content-Type", "application/json");
-  
+  http.setUserAgent("Base-Control/" + String(GIT_VERSION));
   // Connect with the control server at port 5000
   String server_address = serverIP.toString();
   server_address = "http://" + server_address + ":5000/controller/" + String(hostString) + "/";
   http.begin(server_address);  // Maybe we shouldn't start a server every update loop, but eh...
 
   DynamicJsonDocument doc(1024);
-  
   
   doc["sensor_value"] = analog_read_value;  // Use .set(value) to know if it succeedded (returns true if it worked)
 
