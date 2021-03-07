@@ -7,6 +7,8 @@
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h> 
 
+#include "git-version.h"
+
 
 char hostString[20] = {0};
 char endpoint[40];
@@ -44,6 +46,9 @@ void setup()
   digitalWrite(LED_BUILTIN, LOW); // Turn the led on
   Serial.println(""); // Ensure a newline
   Serial.println("Starting setup");
+
+  Serial.println("Firmware version:");
+  Serial.println(GIT_VERSION);
   
   // Clear the data (used for debugging)
   // SPIFFS.format(); // This shouldn't be done in live production code since it will reset all data that it has. 
@@ -237,7 +242,7 @@ void notifyServer()
   int analog_read_value = analogRead(A0);
   Serial.print("AnalogRead value: ");
   Serial.println(analog_read_value);
-  
+    
   if(serverIP == IPAddress(0))
   {
     resolveServerIPWithWait();
