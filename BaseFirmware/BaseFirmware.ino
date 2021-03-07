@@ -300,7 +300,7 @@ void hostProbeResult(String p_pcDomainName, bool p_bProbeResult)
     {
       // Add a simple static MDNS service TXT item
       // MDNS.addServiceTxt(hMDNSService, "port#", 80);
-      
+      MDNS.addServiceTxt(hMDNSService, "Version", GIT_VERSION);
       // Set the callback function for dynamic service TXTs
       MDNS.setDynamicServiceTxtCallback(MDNSDynamicServiceTxtCallback);
     }
