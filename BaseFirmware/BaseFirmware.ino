@@ -234,6 +234,10 @@ void loop() {
 
 void notifyServer()
 {
+  int analog_read_value = analogRead(A0);
+  Serial.print("AnalogRead value: ");
+  Serial.println(analog_read_value);
+  
   if(serverIP == IPAddress(0))
   {
     resolveServerIPWithWait();
@@ -253,14 +257,13 @@ void notifyServer()
   http.begin(server_address);  // Maybe we shouldn't start a server every update loop, but eh...
 
   DynamicJsonDocument doc(1024);
-  int analog_read_value = analogRead(A0);
+  
   
   doc["sensor_value"] = analog_read_value;  // Use .set(value) to know if it succeedded (returns true if it worked)
 
   char output[128];
   serializeJson(doc, output);
-  Serial.print("AnalogRead value: ");
-  Serial.println(analog_read_value);
+  
 
   // Do the actual request.
   int httpCode = http.PUT(output);
