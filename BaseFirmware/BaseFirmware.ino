@@ -36,16 +36,10 @@
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 
-
-
-
 #include "git-version.h" // https://github.com/FrivolousEngineering/git-describe-arduino
 
-
 #define NUMPIXELS 12 // Number of pixels in the ledring
-#define NUM_LED_GROUPS 12
-
-
+#define NUM_LED_GROUPS 12 // If set to 1, it will consider all pixels in the ring as the same. If set to the same number, it will animate each of them individually
 
 // Any unconnected pin, to try to generate a random seed
 #define UNCONNECTED_PIN         2
@@ -92,9 +86,6 @@
 #define MAXVAL(A,B)             (((A) > (B)) ? (A) : (B))
 
 
- 
-// END OF CANDLE MODE RELATED STUFF ////////////////////////////////////////////////////
-
 byte state[NUM_LED_GROUPS];
 unsigned long flicker_msecs[NUM_LED_GROUPS];
 unsigned long flicker_start[NUM_LED_GROUPS];
@@ -110,8 +101,6 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDRINGPIN, NEO_GRB + NEO
 
 char hostString[20] = {0};
 char endpoint[40];
-
-bool shouldSaveConfig = false;
 
 
 void setFlickerIntensity(byte intensity, int group_index)
@@ -220,7 +209,8 @@ uint32_t getChipId()
 {
   #if defined(ESP32)
     uint32_t chipId = 0;
-    for(int i=0; i<17; i=i+8) {
+    for(int i=0; i<17; i=i+8) 
+    {
       chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
     }
     return chipId;
@@ -273,10 +263,10 @@ void setup()
      startServer();
   }
   
-
   digitalWrite(LED_BUILTIN, LOW); // Turn the led start
 
-  if (MDNS.begin(hostString)) {
+  if (MDNS.begin(hostString)) 
+  {
     Serial.println("MDNS started");
     MDNS.addService("krystalium", "tcp", 80);
     MDNS.addServiceTxt("krystalium", "tcp", "Version", GIT_VERSION);
@@ -285,12 +275,14 @@ void setup()
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
 }
 
-void handleRoot() {
+void handleRoot() 
+{
   Serial.println("Handling root?!");
   server.send(200, "text/plain", "Hello world!");   // Send HTTP status 200 (Ok) and send some text to the browser/client
 }
 
-void loop() {
+void loop() 
+{
   // Do the over the air Maaaagic.
   ArduinoOTA.handle();
   //MDNS.update();
