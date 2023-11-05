@@ -64,6 +64,7 @@ unsigned long flicker_start;
 byte index_start;
 byte index_end;
 
+int start_index = 0;
 
 WiFiManager wifiManager;
 
@@ -96,23 +97,23 @@ void saveConfigCallback ()
 void setFlicker(byte intensity)
 {
   int led_index; 
-
+  int secondary_intensity;
+  
   // Clamp intensity between max and absolute min.
   intensity = MAXVAL(MINVAL(intensity, FLICKER_MAX_INTENSITY), FLICKER_ABSOLUTE_MIN_INTENSITY);
-  
+
   if (intensity >= FLICKER_MIN_INTENSITY)
   {
-    for(led_index = 0; led_index < NUMPIXELS; led_index++)
-    {
-      strip.setPixelColor(led_index, 0,  intensity * 3 / 8, intensity);      
-    }
+    secondary_intensity = intensity * 3 / 8; 
   } else {
-    for(led_index = 0; led_index < NUMPIXELS; led_index++)
-    {
-      strip.setPixelColor(led_index, 0, intensity * 3.25 / 8, intensity);
-    }
+    secondary_intensity = intensity * 3.25 / 8;
   }
- 
+  
+  for(led_index = start_index; led_index < NUMPIXELS; led_index++)
+  {
+    strip.setPixelColor(led_index, 0,  secondary_intensity, intensity); 
+  }
+    
   strip.show();
   return;
 }
@@ -131,7 +132,7 @@ void setupNeoPixel()
   setFlicker(255);
   index_start = 255;
   index_end = 255;
-  state = BRIGHT;
+  setFlickerState(BRIGHT);
 
   strip.begin();
 }
@@ -365,14 +366,14 @@ void neopixelLoop()
       flicker_msecs = random(DOWN_MAX_MSECS - DOWN_MIN_MSECS) + DOWN_MIN_MSECS;
       flicker_start = current_time;
       index_start = index_end;
-      if ((index_start > FLICKER_ABSOLUTE_MIN_INTENSITY) && (random(100) < FLICKER_BOTTOM_PERCENT))
+      if (index_start > FLICKER_ABSOLUTE_MIN_INTENSITY && random(100) < FLICKER_BOTTOM_PERCENT)
       {
         index_end = random(index_start - FLICKER_ABSOLUTE_MIN_INTENSITY) + FLICKER_ABSOLUTE_MIN_INTENSITY;
       } else {
         index_end = random(index_start - FLICKER_MIN_INTENSITY) + FLICKER_MIN_INTENSITY;
       }
  
-      state = DOWN;
+      setFlickerState(DOWN);
       break;  
     }  
     case DIM:
@@ -382,7 +383,7 @@ void neopixelLoop()
       flicker_start = current_time;
       index_start = index_end;
       index_end = random(FLICKER_MAX_INTENSITY - index_start) + FLICKER_MIN_INTENSITY;
-      state = UP;
+      setFlickerState(UP);
       break;
     }
     case BRIGHT_HOLD:  
@@ -391,7 +392,7 @@ void neopixelLoop()
       //Serial.println("DIM Hold");
       if (current_time >= (flicker_start + flicker_msecs))
       {
-        state = (state == BRIGHT_HOLD) ? BRIGHT : DIM; 
+        setFlickerState(state == BRIGHT_HOLD ? BRIGHT : DIM); 
       }
       break;
     }
@@ -410,24 +411,33 @@ void neopixelLoop()
           {
             flicker_start = current_time;
             flicker_msecs = random(DIM_HOLD_MAX_MSECS - DIM_HOLD_MIN_MSECS) + DIM_HOLD_MIN_MSECS;
-            state = DIM_HOLD;
+            setFlickerState(DIM_HOLD);
           } else {
-            state = DIM;
+            setFlickerState(DIM);
           } 
         } else {
           if (random(100) < BRIGHT_HOLD_PERCENT)
           {
             flicker_start = current_time;
             flicker_msecs = random(BRIGHT_HOLD_MAX_MSECS - BRIGHT_HOLD_MIN_MSECS) + BRIGHT_HOLD_MIN_MSECS;
-            state = BRIGHT_HOLD;
+            setFlickerState(BRIGHT_HOLD);
           } else {
-            state = BRIGHT;
+            setFlickerState(BRIGHT);
           }
         }
       }
       break;
     }
   }
+}
+
+void setFlickerState(byte new_state)
+{
+  state = new_state;
+  // Select which pixels should be changed! 
+
+  //start_index = int (random(0,2) + 0.5);
+  
 }
 
 void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) 
