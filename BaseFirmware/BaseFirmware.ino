@@ -7,6 +7,7 @@
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h> 
 
+// https://github.com/FrivolousEngineering/git-describe-arduino
 #include "git-version.h"
 
 
@@ -104,7 +105,7 @@ void setup()
   wifiManager.setAPCallback(configModeCallback);
 
   // Create the name of this board by using the chip ID. 
-  sprintf(hostString, "Base-Control-%06X", ESP.getChipId());
+  sprintf(hostString, "Krystalium-Light-%06X", ESP.getChipId());
   Serial.print("Hostname: ");
   Serial.println(hostString);
   
@@ -232,61 +233,9 @@ void loop() {
     ESP.restart();
   }
 
-  notifyServer();
   delay(2000);
 }
 
-
-void notifyServer()
-{
-  int analog_read_value = analogRead(A0);
-  Serial.print("AnalogRead value: ");
-  Serial.println(analog_read_value);
-    
-  if(serverIP == IPAddress(0))
-  {
-    resolveServerIPWithWait();
-    if(serverIP == IPAddress(0))
-    {
-      Serial.println("Unable to find the Server");
-      return; // Still nothing.
-    }
-  }
-  
-  HTTPClient http;
-  http.addHeader("Content-Type", "application/json");
-  http.setUserAgent("Base-Control/" + String(GIT_VERSION));
-  // Connect with the control server at port 5000
-  String server_address = serverIP.toString();
-  server_address = "http://" + server_address + ":5000/controller/" + String(hostString) + "/";
-  http.begin(server_address);  // Maybe we shouldn't start a server every update loop, but eh...
-
-  DynamicJsonDocument doc(1024);
-  
-  doc["sensor_value"] = analog_read_value;  // Use .set(value) to know if it succeedded (returns true if it worked)
-
-  char output[128];
-  serializeJson(doc, output);
-  
-
-  // Do the actual request.
-  int httpCode = http.PUT(output);
-  if(httpCode > 0)
-  { 
-    Serial.print("HTTP CODE RETURNED: ");
-    Serial.println(httpCode);
-    String payload = http.getString(); 
-    // TODO: Actually do something with the response
-    Serial.print("RESPONSE:");
-    Serial.println(payload);
-  } else 
-  {
-    Serial.print("Failed to find the server! Got status code");
-    Serial.println(httpCode);
-    // Couldn't find the server. Oh noes!
-    resolveServerIPWithWait();
-  }
-}
 
 void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) 
 {
