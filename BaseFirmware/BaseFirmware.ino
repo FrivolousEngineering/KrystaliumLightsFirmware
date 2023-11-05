@@ -232,7 +232,7 @@ void setup()
   Serial.println(""); // Ensure a newline
   Serial.println("Starting setup");
 
-  Serial.println("Firmware version:");
+  Serial.print("Firmware version: ");
   Serial.println(GIT_VERSION);
 
   setupNeoPixel();
