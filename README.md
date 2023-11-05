@@ -1,2 +1,2 @@
-# ScifiBaseControlFirmware
-Control firmware for nodeMCU / arduino boards for the SciFi base project
+# Krystalium lights firmware
+Control firmware for nodeMCU / arduino boards for the Krystalium lights project
