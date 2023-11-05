@@ -1,4 +1,28 @@
-#include <ESP8266mDNS.h>
+ #if defined(ESP32)
+  //#include <WiFi.h>
+  #include <mDNS.h>
+  //#include <AsyncTCP.h>
+  #define R1  5
+  #define R2  4
+  #define R3  0
+  #define R4  14
+  #define R5  12
+  #define R6  13
+  #define R7  15
+#elif defined(ESP8266)
+  //#include <ESP8266WiFi.h>
+  #include <ESP8266mDNS.h>
+  //#include <ESPAsyncTCP.h>
+  #define R1  5
+  #define R2  4
+  #define R3  0
+  #define R4  14
+  #define R5  12
+  #define R6  13
+  #define R7  15
+#else
+  #error "Only ESP8266 or ESP32 board"
+#endif
 
 #include <Adafruit_NeoPixel.h>
 #include "WiFiManager.h"  //https://github.com/tzapu/WiFiManager
@@ -13,7 +37,6 @@
 #define NUM_LED_GROUPS 12
 
 #define LEDRINGPIN D2 // Datapin for the ledring
-
 
 // Any unconnected pin, to try to generate a random seed
 #define UNCONNECTED_PIN         2
