@@ -13,7 +13,7 @@
 
 
 #define NUMPIXELS 12 // Number of pixels in the ledring
-#define NUM_LED_GROUPS 3
+#define NUM_LED_GROUPS 12
 
 #define LEDRINGPIN D2 // Datapin for the ledring
 
@@ -34,7 +34,7 @@
 // Absolute minimum of the flickering
 #define FLICKER_ABSOLUTE_MIN_INTENSITY 64
 // Minimum intensity during "normal" flickering (not a dramatic change)
-#define FLICKER_MIN_INTENSITY          192
+#define FLICKER_MIN_INTENSITY          128
 // Maximum intensity of the flickering
 #define FLICKER_MAX_INTENSITY          255
  
@@ -54,9 +54,15 @@
 // When holding after dimming, hold for a number of milliseconds in this range
 #define DIM_HOLD_MIN_MSECS      0
 #define DIM_HOLD_MAX_MSECS      50
+
+// Mixes in a certain amount of red in every group.
+#define MIN_IMPURITY            32
+#define MAX_IMPURITY            96
  
 #define MINVAL(A,B)             (((A) < (B)) ? (A) : (B))
 #define MAXVAL(A,B)             (((A) > (B)) ? (A) : (B))
+
+
  
 // END OF CANDLE MODE RELATED STUFF ////////////////////////////////////////////////////
 
@@ -65,6 +71,7 @@ unsigned long flicker_msecs[NUM_LED_GROUPS];
 unsigned long flicker_start[NUM_LED_GROUPS];
 byte index_start[NUM_LED_GROUPS];
 byte index_end[NUM_LED_GROUPS];
+byte impurity[NUM_LED_GROUPS];
 
 
 WiFiManager wifiManager;
@@ -100,7 +107,10 @@ void setFlickerIntensity(byte intensity, int group_index)
   int led_index = group_index * (NUMPIXELS / NUM_LED_GROUPS);
   int max_led_index = led_index + (NUMPIXELS / NUM_LED_GROUPS);
   int secondary_intensity;
+  int impurity_base = impurity[group_index] / 2;
+  int impurity_intensity = impurity_base + (impurity_base * ((float)intensity / (float)FLICKER_MAX_INTENSITY));
   // Clamp intensity between max and absolute min.
+  Serial.println(((float)intensity / (float)FLICKER_MAX_INTENSITY));
   intensity = MAXVAL(MINVAL(intensity, FLICKER_MAX_INTENSITY), FLICKER_ABSOLUTE_MIN_INTENSITY);
 
   if (intensity >= FLICKER_MIN_INTENSITY)
@@ -112,7 +122,7 @@ void setFlickerIntensity(byte intensity, int group_index)
   
   for(; led_index < max_led_index; led_index++)
   {
-    strip.setPixelColor(led_index, 0,  secondary_intensity, intensity); 
+    strip.setPixelColor(led_index, impurity_intensity, secondary_intensity, intensity); 
   }
     
   strip.show();
@@ -137,6 +147,7 @@ void setupNeoPixel()
     index_start[group_index] = 255;
     index_end[group_index] = 255;
     setFlickerState(BRIGHT, group_index);
+    impurity[group_index] = int (random(MIN_IMPURITY, MAX_IMPURITY) + 0.5);
   }
   strip.begin();
 }
