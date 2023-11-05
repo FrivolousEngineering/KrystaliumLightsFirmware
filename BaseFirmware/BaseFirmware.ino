@@ -13,8 +13,10 @@
 
 
 #define NUMPIXELS 12 // Number of pixels in the ledring
+#define NUM_LED_GROUPS 3
 
 #define LEDRINGPIN D2 // Datapin for the ledring
+
 
 // Any unconnected pin, to try to generate a random seed
 #define UNCONNECTED_PIN         2
@@ -30,7 +32,7 @@
 // Percent chance the LED will suddenly fall to minimum brightness
 #define FLICKER_BOTTOM_PERCENT         10
 // Absolute minimum of the flickering
-#define FLICKER_ABSOLUTE_MIN_INTENSITY 128
+#define FLICKER_ABSOLUTE_MIN_INTENSITY 64
 // Minimum intensity during "normal" flickering (not a dramatic change)
 #define FLICKER_MIN_INTENSITY          192
 // Maximum intensity of the flickering
@@ -58,13 +60,12 @@
  
 // END OF CANDLE MODE RELATED STUFF ////////////////////////////////////////////////////
 
-byte state;
-unsigned long flicker_msecs;
-unsigned long flicker_start;
-byte index_start;
-byte index_end;
+byte state[NUM_LED_GROUPS];
+unsigned long flicker_msecs[NUM_LED_GROUPS];
+unsigned long flicker_start[NUM_LED_GROUPS];
+byte index_start[NUM_LED_GROUPS];
+byte index_end[NUM_LED_GROUPS];
 
-int start_index = 0;
 
 WiFiManager wifiManager;
 
@@ -94,11 +95,11 @@ void saveConfigCallback ()
   shouldSaveConfig = true;
 }
 
-void setFlicker(byte intensity)
+void setFlickerIntensity(byte intensity, int group_index)
 {
-  int led_index; 
+  int led_index = group_index * (NUMPIXELS / NUM_LED_GROUPS);
+  int max_led_index = led_index + (NUMPIXELS / NUM_LED_GROUPS);
   int secondary_intensity;
-  
   // Clamp intensity between max and absolute min.
   intensity = MAXVAL(MINVAL(intensity, FLICKER_MAX_INTENSITY), FLICKER_ABSOLUTE_MIN_INTENSITY);
 
@@ -109,7 +110,7 @@ void setFlicker(byte intensity)
     secondary_intensity = intensity * 3.25 / 8;
   }
   
-  for(led_index = start_index; led_index < NUMPIXELS; led_index++)
+  for(; led_index < max_led_index; led_index++)
   {
     strip.setPixelColor(led_index, 0,  secondary_intensity, intensity); 
   }
@@ -124,16 +125,19 @@ void setupNeoPixel()
   // so we'll just read the analog value of an unconnected pin.  This won't be
   // very random either, but there's really nothing else we can do.
   //
-  // True randomness isn't strictly necessary, we just don't want a whole
+  // True randomness isn't strictlyfor(int group_index necessary, we just don't want a whole
   // string of these things to do exactly the same thing at the same time if
   // they're all powered on simultaneously.
   randomSeed(analogRead(UNCONNECTED_PIN));
- 
-  setFlicker(255);
-  index_start = 255;
-  index_end = 255;
-  setFlickerState(BRIGHT);
-
+  Serial.println("SETTING UP NEOPIXEL");
+  for(int group_index = 0; group_index < NUM_LED_GROUPS; group_index++)
+  {
+    Serial.println(group_index);
+    setFlickerIntensity(255, group_index);
+    index_start[group_index] = 255;
+    index_end[group_index] = 255;
+    setFlickerState(BRIGHT, group_index);
+  }
   strip.begin();
 }
 
@@ -269,7 +273,7 @@ void setup()
     delay(1000);
   } 
 
-  digitalWrite(LED_BUILTIN, LOW); // Turn the led on
+  digitalWrite(LED_BUILTIN, LOW); // Turn the led start
   strcpy(endpoint, custom_endpoint.getValue());
 
   if(shouldSaveConfig)
@@ -348,7 +352,6 @@ void loop() {
     wifiManager.resetSettings();
     ESP.restart();
   }
-  
 
   neopixelLoop();
 }
@@ -358,86 +361,86 @@ void neopixelLoop()
   unsigned long current_time; 
   current_time = millis();
   //Serial.println("loop!");
-  switch (state)
+  for(int group_index = 0; group_index < NUM_LED_GROUPS; group_index++)
   {
-    case BRIGHT:
-    {   
-      //Serial.println("Bright"); 
-      flicker_msecs = random(DOWN_MAX_MSECS - DOWN_MIN_MSECS) + DOWN_MIN_MSECS;
-      flicker_start = current_time;
-      index_start = index_end;
-      if (index_start > FLICKER_ABSOLUTE_MIN_INTENSITY && random(100) < FLICKER_BOTTOM_PERCENT)
-      {
-        index_end = random(index_start - FLICKER_ABSOLUTE_MIN_INTENSITY) + FLICKER_ABSOLUTE_MIN_INTENSITY;
-      } else {
-        index_end = random(index_start - FLICKER_MIN_INTENSITY) + FLICKER_MIN_INTENSITY;
-      }
- 
-      setFlickerState(DOWN);
-      break;  
-    }  
-    case DIM:
+    switch (state[group_index])
     {
-      //Serial.println("Dim");
-      flicker_msecs = random(UP_MAX_MSECS - UP_MIN_MSECS) + UP_MIN_MSECS;
-      flicker_start = current_time;
-      index_start = index_end;
-      index_end = random(FLICKER_MAX_INTENSITY - index_start) + FLICKER_MIN_INTENSITY;
-      setFlickerState(UP);
-      break;
-    }
-    case BRIGHT_HOLD:  
-    case DIM_HOLD:
-    {
-      //Serial.println("DIM Hold");
-      if (current_time >= (flicker_start + flicker_msecs))
-      {
-        setFlickerState(state == BRIGHT_HOLD ? BRIGHT : DIM); 
-      }
-      break;
-    }
-    case UP:
-    case DOWN:
-    {
-      //  Serial.println("Down");
-      if (current_time < (flicker_start + flicker_msecs)) {
-        setFlicker(index_start + ((index_end - index_start) * (((current_time - flicker_start) * 1.0) / flicker_msecs)));
-      } else {
-        setFlicker(index_end);
- 
-        if (state == DOWN)
+      case BRIGHT:
+      {   
+        //Serial.println("Bright"); 
+        flicker_msecs[group_index] = random(DOWN_MAX_MSECS - DOWN_MIN_MSECS) + DOWN_MIN_MSECS;
+        flicker_start[group_index] = current_time;
+        index_start[group_index] = index_end[group_index];
+        if (index_start[group_index] > FLICKER_ABSOLUTE_MIN_INTENSITY && random(100) < FLICKER_BOTTOM_PERCENT)
         {
-          if (random(100) < DIM_HOLD_PERCENT)
-          {
-            flicker_start = current_time;
-            flicker_msecs = random(DIM_HOLD_MAX_MSECS - DIM_HOLD_MIN_MSECS) + DIM_HOLD_MIN_MSECS;
-            setFlickerState(DIM_HOLD);
-          } else {
-            setFlickerState(DIM);
-          } 
+          index_end[group_index] = random(index_start[group_index] - FLICKER_ABSOLUTE_MIN_INTENSITY) + FLICKER_ABSOLUTE_MIN_INTENSITY;
         } else {
-          if (random(100) < BRIGHT_HOLD_PERCENT)
+          index_end[group_index] = random(index_start[group_index]- FLICKER_MIN_INTENSITY) + FLICKER_MIN_INTENSITY;
+        }
+   
+        setFlickerState(DOWN, group_index);
+        break;  
+      }  
+      case DIM:
+      {
+        //Serial.println("Dim");
+        flicker_msecs[group_index] = random(UP_MAX_MSECS - UP_MIN_MSECS) + UP_MIN_MSECS;
+        flicker_start[group_index] = current_time;
+        index_start[group_index] = index_end[group_index];
+        index_end[group_index] = random(FLICKER_MAX_INTENSITY - index_start[group_index]) + FLICKER_MIN_INTENSITY;
+        setFlickerState(UP, group_index);
+        break;
+      }
+      case BRIGHT_HOLD:  
+      case DIM_HOLD:
+      {
+        //Serial.println("DIM Hold");
+        if (current_time >= (flicker_start[group_index] + flicker_msecs[group_index]))
+        {
+          setFlickerState(state[group_index] == BRIGHT_HOLD ? BRIGHT : DIM, group_index); 
+        }
+        break;
+      }
+      case UP:
+      case DOWN:
+      {
+        //  Serial.println("Down");
+        if (current_time < (flicker_start[group_index] + flicker_msecs[group_index])) {
+          setFlickerIntensity(index_start[group_index] + ((index_end [group_index]- index_start[group_index]) * (((current_time - flicker_start[group_index]) * 1.0) / flicker_msecs[group_index])), group_index);
+        } else {
+          setFlickerIntensity(index_end[group_index], group_index);
+   
+          if (state[group_index] == DOWN)
           {
-            flicker_start = current_time;
-            flicker_msecs = random(BRIGHT_HOLD_MAX_MSECS - BRIGHT_HOLD_MIN_MSECS) + BRIGHT_HOLD_MIN_MSECS;
-            setFlickerState(BRIGHT_HOLD);
+            if (random(100) < DIM_HOLD_PERCENT)
+            {
+              flicker_start[group_index] = current_time;
+              flicker_msecs[group_index] = random(DIM_HOLD_MAX_MSECS - DIM_HOLD_MIN_MSECS) + DIM_HOLD_MIN_MSECS;
+              setFlickerState(DIM_HOLD, group_index);
+            } else {
+              setFlickerState(DIM, group_index);
+            } 
           } else {
-            setFlickerState(BRIGHT);
+            if (random(100) < BRIGHT_HOLD_PERCENT)
+            {
+              flicker_start[group_index] = current_time;
+              flicker_msecs[group_index] = random(BRIGHT_HOLD_MAX_MSECS - BRIGHT_HOLD_MIN_MSECS) + BRIGHT_HOLD_MIN_MSECS;
+              setFlickerState(BRIGHT_HOLD, group_index);
+            } else {
+              setFlickerState(BRIGHT,group_index);
+            }
           }
         }
+        break;
       }
-      break;
     }
   }
 }
 
-void setFlickerState(byte new_state)
+void setFlickerState(byte new_state, int group_index)
 {
-  state = new_state;
+  state[group_index] = new_state;
   // Select which pixels should be changed! 
-
-  //start_index = int (random(0,2) + 0.5);
-  
 }
 
 void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) 
