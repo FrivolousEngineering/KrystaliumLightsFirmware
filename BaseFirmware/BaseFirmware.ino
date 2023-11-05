@@ -113,7 +113,7 @@ char endpoint[40];
 
 bool shouldSaveConfig = false;
 
-MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
+//MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
 
 void saveConfigCallback () 
 {
@@ -257,11 +257,9 @@ void setup()
   
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
   Serial.println("Data loaded, starting wifi manager");
-
  
   // Set wifimanager to be not blocking. We don't want the setup of the wifi to prevent the loop from running!
   wifiManager.setConfigPortalBlocking(false); 
- 
 
   // Create the name of this board by using the chip ID. 
   sprintf(hostString, "Krystalium-Light-%06X", getChipId());
@@ -291,8 +289,12 @@ void setup()
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  MDNS.setHostProbeResultCallback(hostProbeResult);
-
+  if (MDNS.begin(hostString)) {
+    Serial.println("MDNS started");
+  }
+  MDNS.addService("krystalium", "tcp", 80);
+  MDNS.addServiceTxt("krystalium", "tcp", "Version", GIT_VERSION);
+  
   setupOTA();
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
 }
@@ -305,7 +307,7 @@ void handleRoot() {
 void loop() {
   // Do the over the air Maaaagic.
   ArduinoOTA.handle();
-  MDNS.update();
+  //MDNS.update();
   wifiManager.process();
 
   if(WiFi.status() == WL_CONNECTED && !is_server_running){
@@ -424,7 +426,7 @@ void setFlickerState(byte new_state, int group_index)
   // Select which pixels should be changed! 
 }
 
-void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) 
+/*void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) 
 {
   //Serial.println("MDNSProbeResultCallback");
   //Serial.printf("MDNSProbeResultCallback: Host domain '%s.local' is %s\n", p_pcDomainName.c_str(), (p_bProbeResult ? "free" : "already USED!"));
@@ -437,4 +439,4 @@ void hostProbeResult(String p_pcDomainName, bool p_bProbeResult)
       MDNS.addServiceTxt(hMDNSService, "Version", GIT_VERSION);
     }
   }
-}
+}*/
