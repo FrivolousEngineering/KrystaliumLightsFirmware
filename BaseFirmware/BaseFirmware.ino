@@ -221,6 +221,22 @@ void startServer()
   is_server_running = true;
 }
 
+/*
+ * Get unique ID based on the chip used. 
+ */
+uint32_t getChipId()
+{
+  #if defined(ESP32)
+    uint32_t chipId = 0;
+    for(int i=0; i<17; i=i+8) {
+      chipId |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
+    }
+    return chipId;
+  #else
+    return ESP.getChipId();
+  #endif
+}
+
 void setup() 
 {
   WiFi.mode(WIFI_STA);
@@ -248,7 +264,7 @@ void setup()
  
 
   // Create the name of this board by using the chip ID. 
-  sprintf(hostString, "Krystalium-Light-%06X", ESP.getChipId());
+  sprintf(hostString, "Krystalium-Light-%06X", getChipId());
   Serial.print("Hostname: ");
   Serial.println(hostString);
   
