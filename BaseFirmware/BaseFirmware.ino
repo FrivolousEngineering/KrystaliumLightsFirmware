@@ -129,8 +129,8 @@ void setFlickerIntensity(byte intensity, int group_index)
   int secondary_intensity;
   int impurity_base = impurity[group_index] / 2;
   int impurity_intensity = impurity_base + (impurity_base * ((float)intensity / (float)FLICKER_MAX_INTENSITY));
+  
   // Clamp intensity between max and absolute min.
-  Serial.println(((float)intensity / (float)FLICKER_MAX_INTENSITY));
   intensity = MAXVAL(MINVAL(intensity, FLICKER_MAX_INTENSITY), FLICKER_ABSOLUTE_MIN_INTENSITY);
 
   if (intensity >= FLICKER_MIN_INTENSITY)
