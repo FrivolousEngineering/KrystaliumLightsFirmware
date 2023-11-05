@@ -113,13 +113,6 @@ char endpoint[40];
 
 bool shouldSaveConfig = false;
 
-//MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
-
-void saveConfigCallback () 
-{
-  Serial.println("Should save config");
-  shouldSaveConfig = true;
-}
 
 void setFlickerIntensity(byte intensity, int group_index)
 {
@@ -161,7 +154,6 @@ void setupNeoPixel()
   Serial.println("SETTING UP NEOPIXEL");
   for(int group_index = 0; group_index < NUM_LED_GROUPS; group_index++)
   {
-    Serial.println(group_index);
     setFlickerIntensity(255, group_index);
     index_start[group_index] = 255;
     index_end[group_index] = 255;
@@ -284,17 +276,11 @@ void setup()
 
   digitalWrite(LED_BUILTIN, LOW); // Turn the led start
 
-  // If you get here you have connected to the WiFi
-  Serial.println("Connection scuceeded!");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
   if (MDNS.begin(hostString)) {
     Serial.println("MDNS started");
+    MDNS.addService("krystalium", "tcp", 80);
+    MDNS.addServiceTxt("krystalium", "tcp", "Version", GIT_VERSION);
   }
-  MDNS.addService("krystalium", "tcp", 80);
-  MDNS.addServiceTxt("krystalium", "tcp", "Version", GIT_VERSION);
-  
   setupOTA();
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
 }
