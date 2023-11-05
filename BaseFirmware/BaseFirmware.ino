@@ -434,18 +434,7 @@ void hostProbeResult(String p_pcDomainName, bool p_bProbeResult)
     if (hMDNSService) 
     {
       // Add a simple static MDNS service TXT item
-      // MDNS.addServiceTxt(hMDNSService, "port#", 80);
       MDNS.addServiceTxt(hMDNSService, "Version", GIT_VERSION);
-      // Set the callback function for dynamic service TXTs
-      MDNS.setDynamicServiceTxtCallback(MDNSDynamicServiceTxtCallback);
     }
-  }
-}
-
-void MDNSDynamicServiceTxtCallback(const MDNSResponder::hMDNSService p_hService) 
-{
-  if (hMDNSService == p_hService) 
-  {
-    //MDNS.addDynamicServiceTxt(p_hService, "Server", serverIP.toString().c_str());
   }
 }
