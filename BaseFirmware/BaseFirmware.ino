@@ -1,8 +1,8 @@
  #if defined(ESP32)
   #include <WiFi.h>
-  #include <mDNS.h>
+  #include <ESPmDNS.h>
   #include <AsyncTCP.h>
-  #include <Webserver.h>
+  #include <WebServer.h>
   #define R1  5
   #define R2  4
   #define R3  0
@@ -10,6 +10,9 @@
   #define R5  12
   #define R6  13
   #define R7  15
+  #define LED_BUILTIN 2
+  WebServer server(80);
+  #define LEDRINGPIN 5 // Datapin for the ledring
 #elif defined(ESP8266)
   #include <ESP8266WiFi.h>
   #include <ESP8266WebServer.h>
@@ -22,6 +25,8 @@
   #define R5  12
   #define R6  13
   #define R7  15
+  ESP8266WebServer server(80);
+  #define LEDRINGPIN D2 // Datapin for the ledring
 #else
   #error "Only ESP8266 or ESP32 board"
 #endif
@@ -31,7 +36,7 @@
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 
-ESP8266WebServer server(80);
+
 
 
 #include "git-version.h" // https://github.com/FrivolousEngineering/git-describe-arduino
@@ -40,7 +45,7 @@ ESP8266WebServer server(80);
 #define NUMPIXELS 12 // Number of pixels in the ledring
 #define NUM_LED_GROUPS 12
 
-#define LEDRINGPIN D2 // Datapin for the ledring
+
 
 // Any unconnected pin, to try to generate a random seed
 #define UNCONNECTED_PIN         2
@@ -56,7 +61,7 @@ ESP8266WebServer server(80);
 // Percent chance the LED will suddenly fall to minimum brightness
 #define FLICKER_BOTTOM_PERCENT         10
 // Absolute minimum of the flickering
-#define FLICKER_ABSOLUTE_MIN_INTENSITY 64
+#define FLICKER_ABSOLUTE_MIN_INTENSITY 32
 // Minimum intensity during "normal" flickering (not a dramatic change)
 #define FLICKER_MIN_INTENSITY          128
 // Maximum intensity of the flickering
@@ -107,8 +112,6 @@ char hostString[20] = {0};
 char endpoint[40];
 
 bool shouldSaveConfig = false;
-
-IPAddress serverIP = IPAddress(0);
 
 MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
 
@@ -223,7 +226,7 @@ void setup()
   WiFi.mode(WIFI_STA);
   Serial.begin(115200);
   pinMode(0, INPUT_PULLUP);
-  pinMode(BUILTIN_LED, OUTPUT); // Primary led
+  pinMode(LED_BUILTIN, OUTPUT); // Primary led
   pinMode(2, OUTPUT); // Secondary led
   
   // BTurn led on so we see something is going on. 
