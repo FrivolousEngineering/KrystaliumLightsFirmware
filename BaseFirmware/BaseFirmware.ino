@@ -177,6 +177,7 @@ void setupOTA()
   ArduinoOTA.begin();
   Serial.println("Arduino OTA has booted.");
 }
+
 void setup() 
 {
   // put your setup code here, to run once:
@@ -294,6 +295,8 @@ void setup()
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
+  MDNS.setHostProbeResultCallback(hostProbeResult);
+
   setupOTA();
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
 }
@@ -316,7 +319,8 @@ IPAddress getServerIP()
 {
   MDNS.setHostProbeResultCallback(hostProbeResult);
   int n = MDNS.queryService("ScifiBase", "tcp");
-  for (int i = 0; i < n; ++i) {
+  for (int i = 0; i < n; ++i) 
+  {
     if(MDNS.hostname(i) == "Base-Control-Server._ScifiBase._tcp.local")
     {
       return MDNS.IP(i);
@@ -328,6 +332,7 @@ IPAddress getServerIP()
 void loop() {
   // Do the over the air Maaaagic.
   ArduinoOTA.handle();
+  MDNS.update();
   wifiManager.process();
 
   // Handle resetting of the wifi credentials.
@@ -342,7 +347,7 @@ void loop() {
     wifiManager.resetSettings();
     ESP.restart();
   }
-
+  
 
   neopixelLoop();
 }
@@ -351,12 +356,12 @@ void neopixelLoop()
 {
   unsigned long current_time; 
   current_time = millis();
-  Serial.println("loop!");
+  //Serial.println("loop!");
   switch (state)
   {
     case BRIGHT:
     {   
-      Serial.println("Bright"); 
+      //Serial.println("Bright"); 
       flicker_msecs = random(DOWN_MAX_MSECS - DOWN_MIN_MSECS) + DOWN_MIN_MSECS;
       flicker_start = current_time;
       index_start = index_end;
@@ -372,7 +377,7 @@ void neopixelLoop()
     }  
     case DIM:
     {
-      Serial.println("Dim");
+      //Serial.println("Dim");
       flicker_msecs = random(UP_MAX_MSECS - UP_MIN_MSECS) + UP_MIN_MSECS;
       flicker_start = current_time;
       index_start = index_end;
@@ -383,7 +388,7 @@ void neopixelLoop()
     case BRIGHT_HOLD:  
     case DIM_HOLD:
     {
-      Serial.println("DIM Hold");
+      //Serial.println("DIM Hold");
       if (current_time >= (flicker_start + flicker_msecs))
       {
         state = (state == BRIGHT_HOLD) ? BRIGHT : DIM; 
@@ -447,6 +452,6 @@ void MDNSDynamicServiceTxtCallback(const MDNSResponder::hMDNSService p_hService)
 {
   if (hMDNSService == p_hService) 
   {
-    MDNS.addDynamicServiceTxt(p_hService, "Server", serverIP.toString().c_str());
+    //MDNS.addDynamicServiceTxt(p_hService, "Server", serverIP.toString().c_str());
   }
 }
