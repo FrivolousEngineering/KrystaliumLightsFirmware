@@ -1,7 +1,8 @@
  #if defined(ESP32)
-  //#include <WiFi.h>
+  #include <WiFi.h>
   #include <mDNS.h>
-  //#include <AsyncTCP.h>
+  #include <AsyncTCP.h>
+  #include <Webserver.h>
   #define R1  5
   #define R2  4
   #define R3  0
@@ -10,9 +11,10 @@
   #define R6  13
   #define R7  15
 #elif defined(ESP8266)
-  //#include <ESP8266WiFi.h>
+  #include <ESP8266WiFi.h>
+  #include <ESP8266WebServer.h>
   #include <ESP8266mDNS.h>
-  //#include <ESPAsyncTCP.h>
+  #include <ESPAsyncTCP.h>
   #define R1  5
   #define R2  4
   #define R3  0
@@ -27,7 +29,9 @@
 #include <Adafruit_NeoPixel.h>
 #include "WiFiManager.h"  //https://github.com/tzapu/WiFiManager
 #include <ArduinoOTA.h>
-#include <ArduinoJson.h> 
+#include <ArduinoJson.h>
+
+ESP8266WebServer server(80);
 
 
 #include "git-version.h" // https://github.com/FrivolousEngineering/git-describe-arduino
@@ -93,6 +97,7 @@ byte index_start[NUM_LED_GROUPS];
 byte index_end[NUM_LED_GROUPS];
 byte impurity[NUM_LED_GROUPS];
 
+bool is_server_running = false;
 
 WiFiManager wifiManager;
 
@@ -106,15 +111,6 @@ bool shouldSaveConfig = false;
 IPAddress serverIP = IPAddress(0);
 
 MDNSResponder::hMDNSService hMDNSService = 0; // The handle of our mDNS Service
-
-void configModeCallback (WiFiManager *myWiFiManager) 
-{
-  Serial.print("Entered config mode IP: ");
-  Serial.print(WiFi.softAPIP());
-  Serial.print(" accespoint name: ");
-  // If you used auto generated SSID, print it
-  Serial.println(myWiFiManager->getConfigPortalSSID());
-}
 
 void saveConfigCallback () 
 {
@@ -214,9 +210,17 @@ void setupOTA()
   Serial.println("Arduino OTA has booted.");
 }
 
+void startServer()
+{
+  Serial.println("Starting Server");
+  server.begin();
+  server.on("/", handleRoot);
+  is_server_running = true;
+}
+
 void setup() 
 {
-  // put your setup code here, to run once:
+  WiFi.mode(WIFI_STA);
   Serial.begin(115200);
   pinMode(0, INPUT_PULLUP);
   pinMode(BUILTIN_LED, OUTPUT); // Primary led
@@ -232,60 +236,13 @@ void setup()
 
   setupNeoPixel();
   
-  // Clear the data (used for debugging)
-  // SPIFFS.format(); // This shouldn't be done in live production code since it will reset all data that it has. 
-  if (SPIFFS.begin()) 
-  {
-    Serial.println("Mounted file system");
-    if (SPIFFS.exists("/config.json")) 
-    {
-      //file exists, reading and loading
-      Serial.println("Reading config file");
-      File configFile = SPIFFS.open("/config.json", "r");
-      if (configFile) 
-      {
-        Serial.println("Opened config file");
-        size_t size = configFile.size();
-        // Allocate a buffer to store contents of the file.
-        std::unique_ptr<char[]> buf(new char[size]);
-
-        configFile.readBytes(buf.get(), size);
-        DynamicJsonDocument doc(1024);
-        DeserializationError error = deserializeJson(doc, buf.get());
-        // Print it on the serial
-        serializeJson(doc, Serial);
-        
-        if (!error) 
-        {
-          Serial.println("\nparsed json");
-          strcpy(endpoint, doc["endpoint"]);
-        } else 
-        {
-          Serial.println("failed to load json config");
-        }
-        configFile.close();
-      }
-    }
-  } else 
-  {
-    Serial.println("Failed to mount FS");
-  }
-
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
   Serial.println("Data loaded, starting wifi manager");
-  WiFiManagerParameter custom_endpoint("endpoint", "Custom endpoint", endpoint, 40);
 
-
-  // Set the callback for the custom extra fields
-  wifiManager.setSaveConfigCallback(saveConfigCallback);
-  
-  wifiManager.addParameter(&custom_endpoint);
-  
+ 
   // Set wifimanager to be not blocking. We don't want the setup of the wifi to prevent the loop from running!
   wifiManager.setConfigPortalBlocking(false); 
-  
-  //Set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
-  wifiManager.setAPCallback(configModeCallback);
+ 
 
   // Create the name of this board by using the chip ID. 
   sprintf(hostString, "Krystalium-Light-%06X", ESP.getChipId());
@@ -302,29 +259,13 @@ void setup()
     delay(4000);
     digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
     delay(1000);
-  } 
+  } else
+  {
+     startServer();
+  }
+  
 
   digitalWrite(LED_BUILTIN, LOW); // Turn the led start
-  strcpy(endpoint, custom_endpoint.getValue());
-
-  if(shouldSaveConfig)
-  {
-    // The custom config has been changed, so we have to store something.
-    Serial.println("Saving the updated config");
-    DynamicJsonDocument doc(1024);
-    doc["endpoint"] = endpoint;
-
-    File configFile = SPIFFS.open("/config.json", "w");
-    if (!configFile) 
-    {
-      Serial.println("failed to open config file for writing");
-    }
-
-    serializeJson(doc, Serial);
-    serializeJson(doc, configFile);
-    configFile.close();
-    Serial.println("");
-  }
 
   // If you get here you have connected to the WiFi
   Serial.println("Connection scuceeded!");
@@ -337,32 +278,9 @@ void setup()
   digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
 }
 
-void resolveServerIPWithWait()
-{
-  serverIP = getServerIP();
-  if(serverIP != IPAddress(0))
-  {
-    return;
-  }
-
-  digitalWrite(2, LOW);
-  delay(500);
-  digitalWrite(2, HIGH);
-  delay(500);
-}
-
-IPAddress getServerIP()
-{
-  MDNS.setHostProbeResultCallback(hostProbeResult);
-  int n = MDNS.queryService("ScifiBase", "tcp");
-  for (int i = 0; i < n; ++i) 
-  {
-    if(MDNS.hostname(i) == "Base-Control-Server._ScifiBase._tcp.local")
-    {
-      return MDNS.IP(i);
-    }
-  }
-  return IPAddress(0);
+void handleRoot() {
+  Serial.println("Handling root?!");
+  server.send(200, "text/plain", "Hello world!");   // Send HTTP status 200 (Ok) and send some text to the browser/client
 }
 
 void loop() {
@@ -371,6 +289,19 @@ void loop() {
   MDNS.update();
   wifiManager.process();
 
+  if(WiFi.status() == WL_CONNECTED && !is_server_running){
+    startServer();
+  }
+  if(WiFi.status() != WL_CONNECTED && is_server_running){ 
+    server.stop();
+    is_server_running = false;
+  }
+
+  if(is_server_running)
+  {
+    server.handleClient();
+  }
+  
   // Handle resetting of the wifi credentials.
   if(digitalRead(0) == LOW)
   {
@@ -476,7 +407,7 @@ void setFlickerState(byte new_state, int group_index)
 
 void hostProbeResult(String p_pcDomainName, bool p_bProbeResult) 
 {
-  Serial.println("MDNSProbeResultCallback");
+  //Serial.println("MDNSProbeResultCallback");
   //Serial.printf("MDNSProbeResultCallback: Host domain '%s.local' is %s\n", p_pcDomainName.c_str(), (p_bProbeResult ? "free" : "already USED!"));
   if (!hMDNSService) 
   {
