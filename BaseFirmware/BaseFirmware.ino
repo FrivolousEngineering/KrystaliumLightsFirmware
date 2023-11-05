@@ -65,6 +65,8 @@ byte index_start;
 byte index_end;
 
 
+WiFiManager wifiManager;
+
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUMPIXELS, LEDRINGPIN, NEO_GRB + NEO_KHZ800);
 
 char hostString[20] = {0};
@@ -236,12 +238,14 @@ void setup()
   Serial.println("Data loaded, starting wifi manager");
   WiFiManagerParameter custom_endpoint("endpoint", "Custom endpoint", endpoint, 40);
 
-  WiFiManager wifiManager;
 
   // Set the callback for the custom extra fields
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   
   wifiManager.addParameter(&custom_endpoint);
+  
+  // Set wifimanager to be not blocking. We don't want the setup of the wifi to prevent the loop from running!
+  wifiManager.setConfigPortalBlocking(false); 
   
   //Set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   wifiManager.setAPCallback(configModeCallback);
@@ -260,7 +264,6 @@ void setup()
     digitalWrite(LED_BUILTIN, LOW); // Turn the led on
     delay(4000);
     digitalWrite(LED_BUILTIN, HIGH); // Turn the led off
-    ESP.reset();
     delay(1000);
   } 
 
@@ -324,7 +327,8 @@ IPAddress getServerIP()
 
 void loop() {
   // Do the over the air Maaaagic.
-  ArduinoOTA.handle(); 
+  ArduinoOTA.handle();
+  wifiManager.process();
 
   // Handle resetting of the wifi credentials.
   if(digitalRead(0) == LOW)
