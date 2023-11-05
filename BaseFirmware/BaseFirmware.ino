@@ -436,7 +436,7 @@ void hostProbeResult(String p_pcDomainName, bool p_bProbeResult)
   //Serial.printf("MDNSProbeResultCallback: Host domain '%s.local' is %s\n", p_pcDomainName.c_str(), (p_bProbeResult ? "free" : "already USED!"));
   if (!hMDNSService) 
   {
-    hMDNSService = MDNS.addService(0, "ScifiBase", "tcp", 80);
+    hMDNSService = MDNS.addService(0, "krystalium", "tcp", 80);
     if (hMDNSService) 
     {
       // Add a simple static MDNS service TXT item
